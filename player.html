@@ -1,0 +1,7 @@
+<video controls autoplay id="player"></video>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const videoUrl = params.get('url');
+  document.getElementById("player").src = decodeURIComponent(videoUrl);
+</script>
