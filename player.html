@@ -6,48 +6,127 @@
     <title>TeraBox Video Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+        }
+        
         body {
             margin: 0;
             padding: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
+        
         .container {
-            width: 100%;
-            max-width: 800px;
-            text-align: center;
+            padding: 20px;
+            max-width: 100%;
+            box-sizing: border-box;
         }
+        
+        .header {
+            margin-bottom: 15px;
+        }
+        
+        .title {
+            font-size: 1.2rem;
+            margin: 0 0 5px 0;
+            word-break: break-word;
+        }
+        
+        .meta {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 0 0 15px 0;
+        }
+        
+        .player-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
         video {
             width: 100%;
-            max-height: 80vh;
-            background-color: #000;
+            height: 100%;
+            display: block;
         }
-        .title {
-            color: #fff;
-            padding: 10px;
-            margin: 0;
-            font-size: 18px;
-        }
+        
         .loading {
-            color: #fff;
-            font-size: 18px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
         }
+        
         .error {
             color: #ff4444;
-            padding: 20px;
+            padding: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+        
+        .btn-secondary {
+            background-color: #f0f0f0;
+            color: var(--tg-theme-text-color);
+        }
+        
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="title" id="video-title">Loading video...</h1>
-        <video id="video-player" controls playsinline></video>
-        <p class="loading" id="status">Connecting to video source...</p>
-        <p class="error" id="error" style="display: none;"></p>
+        <div class="header">
+            <h1 class="title" id="video-title">Loading video...</h1>
+            <p class="meta" id="video-meta"></p>
+        </div>
+        
+        <div class="player-container">
+            <video id="video-player" controls playsinline></video>
+            <p class="loading" id="status">Connecting to video source...</p>
+        </div>
+        
+        <p class="error" id="error"></p>
+        
+        <div class="controls">
+            <a href="#" class="btn btn-primary" id="download-btn">Download</a>
+            <button class="btn btn-secondary" id="close-btn">Close</button>
+        </div>
     </div>
 
     <script>
@@ -58,46 +137,130 @@
         
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const videoUrl = urlParams.get('url');
-        const videoTitle = urlParams.get('title') || 'TeraBox Video';
+        const videoUrl = decodeURIComponent(urlParams.get('url') || '');
+        const videoTitle = decodeURIComponent(urlParams.get('title') || 'TeraBox Video');
+        const directUrl = decodeURIComponent(urlParams.get('direct') || videoUrl);
+        const thumbUrl = decodeURIComponent(urlParams.get('thumb') || '');
         
-        // Set the title
-        document.getElementById('video-title').textContent = videoTitle;
-        
-        // Initialize video player
+        // DOM elements
         const videoPlayer = document.getElementById('video-player');
         const statusText = document.getElementById('status');
         const errorText = document.getElementById('error');
+        const titleElement = document.getElementById('video-title');
+        const metaElement = document.getElementById('video-meta');
+        const downloadBtn = document.getElementById('download-btn');
+        const closeBtn = document.getElementById('close-btn');
         
-        if (!videoUrl) {
-            showError("No video URL provided");
-            return;
+        // Set initial UI
+        titleElement.textContent = videoTitle;
+        downloadBtn.href = directUrl;
+        
+        // Close button handler
+        closeBtn.addEventListener('click', () => {
+            tg.close();
+        });
+        
+        // Try to play video
+        function initPlayer() {
+            if (!videoUrl) {
+                showError("No video URL provided");
+                return;
+            }
+            
+            // Configure video player with proper MIME type hints
+            const fileExt = videoUrl.split('.').pop().split('?')[0].toLowerCase();
+            const mimeType = getMimeType(fileExt);
+            
+            if (mimeType) {
+                videoPlayer.innerHTML = `<source src="${videoUrl}" type="${mimeType}">`;
+                videoPlayer.load();
+            } else {
+                videoPlayer.src = videoUrl;
+                videoPlayer.load();
+            }
+            
+            // Event listeners
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                statusText.classList.add('hidden');
+                videoPlayer.classList.remove('hidden');
+                
+                // Set video metadata
+                const duration = formatTime(videoPlayer.duration);
+                metaElement.textContent = `${formatFileSize(videoPlayer.videoWidth, videoPlayer.videoHeight)} • ${duration}`;
+                
+                // Try autoplay
+                videoPlayer.play().catch(e => {
+                    showError("Autoplay blocked. Please tap the play button.");
+                    console.log("Autoplay blocked:", e);
+                });
+            });
+            
+            videoPlayer.addEventListener('error', (e) => {
+                console.error("Video error:", videoPlayer.error);
+                handleVideoError(videoPlayer.error);
+            });
         }
         
-        // Configure video player
-        videoPlayer.src = videoUrl;
-        videoPlayer.load();
+        // Handle video errors
+        function handleVideoError(error) {
+            let errorMsg = "Failed to load video. ";
+            
+            switch(error.code) {
+                case 1: // MEDIA_ERR_ABORTED
+                    errorMsg += "Playback was aborted.";
+                    break;
+                case 2: // MEDIA_ERR_NETWORK
+                    errorMsg += "Network error occurred.";
+                    break;
+                case 3: // MEDIA_ERR_DECODE
+                    errorMsg += "Error in video decoding.";
+                    break;
+                case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                    errorMsg += "Video format not supported.";
+                    break;
+                default:
+                    errorMsg += "Unknown error occurred.";
+            }
+            
+            showError(errorMsg);
+        }
         
-        videoPlayer.addEventListener('error', (e) => {
-            showError("Failed to load video. Please try downloading instead.");
-            console.error("Video error:", e);
-        });
-        
-        videoPlayer.addEventListener('canplay', () => {
-            statusText.style.display = 'none';
-            videoPlayer.style.display = 'block';
-            videoPlayer.play().catch(e => {
-                showError("Autoplay blocked. Please tap the play button.");
-                console.log("Autoplay blocked:", e);
-            });
-        });
-        
+        // Show error message
         function showError(message) {
-            statusText.style.display = 'none';
-            videoPlayer.style.display = 'none';
+            statusText.classList.add('hidden');
+            videoPlayer.classList.add('hidden');
             errorText.style.display = 'block';
             errorText.textContent = message;
         }
+        
+        // Helper functions
+        function getMimeType(ext) {
+            const mimeTypes = {
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'ogg': 'video/ogg',
+                'mov': 'video/quicktime',
+                'mkv': 'video/x-matroska'
+            };
+            return mimeTypes[ext] || null;
+        }
+        
+        function formatFileSize(width, height) {
+            if (width && height) {
+                return `${width}×${height}`;
+            }
+            return '';
+        }
+        
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+        
+        // Initialize player
+        initPlayer();
     </script>
 </body>
 </html>
