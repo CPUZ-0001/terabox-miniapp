@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Video Stream</title>
+  <title>Video Player</title>
   <style>
     body {
       margin: 0;
@@ -12,27 +12,42 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      flex-direction: column;
       color: #fff;
       font-family: sans-serif;
     }
     video {
       width: 90%;
-      max-height: 90vh;
+      max-height: 80vh;
       background-color: #000;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 10px;
     }
   </style>
 </head>
 <body>
-  <video id="video" controls autoplay playsinline>
-    <source src="https://test-api.gaurav281833.workers.dev/proxy?url=https%3A%2F%2Fdm-d.terabox.app%2Ffile%2F60be2cc292f27a7eced676a946ff919f%3Ffid%3D4399148088253-250528-618315167560353%26dstime%3D1753270883%26rt%3Dsh%26sign%3DFDtAER-DCb740ccc5511e5e8fedcff06b081203-lKd32INYrwGm0jffzzHvqT05Uqw%253D%26expires%3D8h%26chkv%3D0%26chkbd%3D0%26chkpc%3D%26dp-logid%3D115484715976981179%26dp-callid%3D0%26r%3D742809636%26sh%3D1%26region%3Djp&file_name=Archita%20Part-3%20(3).mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
+  <h1 id="title">Loading video...</h1>
+  <video id="video" controls autoplay playsinline></video>
 
   <script>
-    const video = document.getElementById('video');
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoUrl = urlParams.get("url");
+    const title = urlParams.get("title") || "TeraBox Video";
+
+    document.getElementById("title").textContent = title;
+
+    const video = document.getElementById("video");
+    if (!videoUrl) {
+      alert("No video URL provided in ?url=");
+    } else {
+      video.src = videoUrl;
+    }
+
     video.onerror = () => {
-      console.error("Video load error:", video.error);
-      alert("Failed to load video.");
+      console.error("Video error:", video.error);
+      alert("Failed to load video. Check proxy or URL.");
     };
   </script>
 </body>
