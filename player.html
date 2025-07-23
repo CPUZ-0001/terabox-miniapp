@@ -33,16 +33,27 @@
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const videoUrl = urlParams.get("url");
+    const rawUrl = urlParams.get("url");
     const title = urlParams.get("title") || "TeraBox Video";
 
     document.getElementById("title").textContent = title;
 
     const video = document.getElementById("video");
-    if (!videoUrl) {
+
+    if (!rawUrl) {
       alert("No video URL provided in ?url=");
     } else {
-      video.src = videoUrl;
+      // Auto encode if not already encoded
+      let encodedUrl;
+      try {
+        encodedUrl = decodeURIComponent(rawUrl) === rawUrl
+          ? encodeURI(rawUrl)
+          : rawUrl;
+      } catch {
+        encodedUrl = encodeURI(rawUrl);
+      }
+
+      video.src = encodedUrl;
     }
 
     video.onerror = () => {
