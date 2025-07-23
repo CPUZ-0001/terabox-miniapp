@@ -1,65 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Video Player</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeraBox Player</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
+    :root {
+      --tg-bg: #17212b;
+      --tg-text: #ffffff;
+      --tg-hint: #708499;
+      --tg-link: #6ab3f3;
+      --tg-button: #5288c1;
+      --tg-button-text: #ffffff;
+    }
+    
     body {
       margin: 0;
-      background-color: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      padding: 0;
+      background: var(--tg-bg);
+      color: var(--tg-text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
       height: 100vh;
+      display: flex;
       flex-direction: column;
-      color: #fff;
-      font-family: sans-serif;
+      align-items: center;
     }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      padding: 15px;
+      box-sizing: border-box;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    .title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 5px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .info {
+      font-size: 14px;
+      color: var(--tg-hint);
+      margin-bottom: 15px;
+    }
+    
+    .video-container {
+      width: 100%;
+      position: relative;
+      padding-top: 56.25%; /* 16:9 */
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    
     video {
-      width: 90%;
-      max-height: 80vh;
-      background-color: #000;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
-    h1 {
-      font-size: 20px;
-      margin: 10px;
+    
+    .status {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #fff;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top: 3px solid #fff;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    button {
+      background: var(--tg-button);
+      color: var(--tg-button-text);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    
+    .error {
+      color: #ff6b6b;
+      text-align: center;
+      margin: 20px 0;
+      padding: 0 15px;
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1 id="title">Loading video...</h1>
-  <video id="video" controls autoplay playsinline></video>
+  <div class="container">
+    <div class="header">
+      <h1 class="title" id="title">TeraBox Video</h1>
+      <p class="info" id="info"></p>
+    </div>
+    
+    <div class="video-container">
+      <video id="video" playsinline></video>
+      <div class="status" id="status">
+        <div class="spinner"></div>
+        <p>Loading video...</p>
+      </div>
+    </div>
+    
+    <p class="error" id="error"></p>
+    
+    <div class="controls">
+      <button id="retry">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Retry
+      </button>
+      <button id="download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download
+      </button>
+    </div>
+  </div>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const rawUrl = urlParams.get("url");
-    const title = urlParams.get("title") || "TeraBox Video";
-
-    document.getElementById("title").textContent = title;
-
-    const video = document.getElementById("video");
-
-    if (!rawUrl) {
-      alert("No video URL provided in ?url=");
-    } else {
-      // Auto encode if not already encoded
-      let encodedUrl;
-      try {
-        encodedUrl = decodeURIComponent(rawUrl) === rawUrl
-          ? encodeURI(rawUrl)
-          : rawUrl;
-      } catch {
-        encodedUrl = encodeURI(rawUrl);
-      }
-
-      video.src = encodedUrl;
+    // Telegram WebApp setup
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.enableClosingConfirmation();
+      tg.setHeaderColor('#17212b');
+      tg.backgroundColor = '#17212b';
     }
 
-    video.onerror = () => {
-      console.error("Video error:", video.error);
-      alert("Failed to load video. Check proxy or URL.");
-    };
+    // DOM elements
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const error = document.getElementById('error');
+    const title = document.getElementById('title');
+    const info = document.getElementById('info');
+    const retryBtn = document.getElementById('retry');
+    const downloadBtn = document.getElementById('download');
+
+    // Get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const videoUrl = params.get('url');
+    const videoTitle = params.get('title') || 'TeraBox Video';
+    const downloadUrl = params.get('download') || videoUrl;
+    const fileSize = params.get('size') || '';
+
+    // Set UI
+    title.textContent = videoTitle;
+    if (fileSize) info.textContent = `Size: ${fileSize}`;
+
+    // Initialize player
+    function initPlayer() {
+      if (!videoUrl) {
+        showError("No video URL provided");
+        return;
+      }
+
+      status.style.display = 'block';
+      error.style.display = 'none';
+      video.style.display = 'none';
+
+      video.src = videoUrl;
+      video.load();
+
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          video.controls = true;
+          status.style.display = 'none';
+          video.style.display = 'block';
+        });
+      }
+    }
+
+    // Event listeners
+    video.addEventListener('loadedmetadata', () => {
+      status.style.display = 'none';
+      video.style.display = 'block';
+    });
+
+    video.addEventListener('error', () => {
+      showError(getErrorText(video.error));
+    });
+
+    video.addEventListener('waiting', () => {
+      status.style.display = 'block';
+      status.innerHTML = '<div class="spinner"></div><p>Buffering...</p>';
+    });
+
+    video.addEventListener('playing', () => {
+      status.style.display = 'none';
+    });
+
+    retryBtn.addEventListener('click', initPlayer);
+    downloadBtn.addEventListener('click', () => window.open(downloadUrl, '_blank'));
+
+    // Helper functions
+    function showError(message) {
+      error.textContent = message;
+      error.style.display = 'block';
+      status.style.display = 'none';
+      video.style.display = 'none';
+    }
+
+    function getErrorText(error) {
+      if (!error) return "Failed to load video";
+      switch(error.code) {
+        case 1: return "Video loading aborted";
+        case 2: return "Network error";
+        case 3: return "Decoding error";
+        case 4: return "Format not supported";
+        default: return "Playback error";
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', initPlayer);
   </script>
 </body>
 </html>
