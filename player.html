@@ -123,6 +123,28 @@
       padding: 0 15px;
       display: none;
     }
+
+    .download-options {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .download-option {
+      background: var(--tg-bg);
+      border: 1px solid var(--tg-button);
+      color: var(--tg-text);
+      padding: 8px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .download-option:hover {
+      background: var(--tg-button);
+    }
   </style>
 </head>
 <body>
@@ -150,7 +172,7 @@
         </svg>
         Retry
       </button>
-      <button id="download">
+      <button id="download-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7 10 12 15 17 10"></polyline>
@@ -158,6 +180,11 @@
         </svg>
         Download
       </button>
+    </div>
+
+    <div class="download-options" id="download-options">
+      <div class="download-option" id="direct-download">Direct Download (Fast)</div>
+      <div class="download-option" id="proxy-download">Proxy Download (Reliable)</div>
     </div>
   </div>
 
@@ -178,13 +205,17 @@
     const title = document.getElementById('title');
     const info = document.getElementById('info');
     const retryBtn = document.getElementById('retry');
-    const downloadBtn = document.getElementById('download');
+    const downloadBtn = document.getElementById('download-btn');
+    const downloadOptions = document.getElementById('download-options');
+    const directDownload = document.getElementById('direct-download');
+    const proxyDownload = document.getElementById('proxy-download');
 
     // Get URL parameters
     const params = new URLSearchParams(window.location.search);
     const videoUrl = params.get('url');
     const videoTitle = params.get('title') || 'TeraBox Video';
-    const downloadUrl = params.get('download') || videoUrl;
+    const directDownloadUrl = params.get('direct') || '';
+    const proxyDownloadUrl = params.get('download') || '';
     const fileSize = params.get('size') || '';
 
     // Set UI
@@ -235,7 +266,39 @@
     });
 
     retryBtn.addEventListener('click', initPlayer);
-    downloadBtn.addEventListener('click', () => window.open(downloadUrl, '_blank'));
+    
+    downloadBtn.addEventListener('click', () => {
+      if (directDownloadUrl || proxyDownloadUrl) {
+        downloadOptions.style.display = 'flex';
+      } else {
+        showError("No download links available");
+      }
+    });
+
+    directDownload.addEventListener('click', () => {
+      if (directDownloadUrl) {
+        window.open(directDownloadUrl, '_blank');
+      } else {
+        showError("Direct download link not available");
+      }
+      downloadOptions.style.display = 'none';
+    });
+
+    proxyDownload.addEventListener('click', () => {
+      if (proxyDownloadUrl) {
+        window.open(proxyDownloadUrl, '_blank');
+      } else {
+        showError("Proxy download link not available");
+      }
+      downloadOptions.style.display = 'none';
+    });
+
+    // Close download options when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!downloadOptions.contains(e.target) && e.target !== downloadBtn) {
+        downloadOptions.style.display = 'none';
+      }
+    });
 
     // Helper functions
     function showError(message) {
@@ -243,6 +306,7 @@
       error.style.display = 'block';
       status.style.display = 'none';
       video.style.display = 'none';
+      downloadOptions.style.display = 'none';
     }
 
     function getErrorText(error) {
