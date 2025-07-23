@@ -1,230 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeraBox Video Player</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        }
-        .container {
-            width: 100%;
-            max-width: 800px;
-            text-align: center;
-        }
-        video {
-            width: 100%;
-            max-height: 80vh;
-            background-color: #000;
-        }
-        .title {
-            color: #fff;
-            padding: 10px;
-            margin: 0;
-            font-size: 18px;
-        }
-        .loading {
-            color: #fff;
-            font-size: 18px;
-        }
-        .error {
-            color: #ff4444;
-            padding: 20px;
-            display: none;
-        }
-        .download-btn {
-            background-color: #0088cc;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            text-decoration: none;
-            margin-top: 15px;
-            display: inline-block;
-        }
-        .format-btn {
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 5px;
-            text-decoration: none;
-            margin: 5px;
-            display: inline-block;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Video Stream</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    video {
+      width: 90%;
+      max-height: 90vh;
+      background-color: #000;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="title" id="video-title">Loading video...</h1>
-        <video id="video-player" controls playsinline></video>
-        <p class="loading" id="status">Connecting to video source...</p>
-        <p class="error" id="error"></p>
-        <div id="format-options" style="display: none;">
-            <p style="color: #fff;">Try different formats:</p>
-        </div>
-        <a href="#" class="download-btn" id="download-btn" style="display: none;">Download Video</a>
-    </div>
+  <video id="video" controls autoplay playsinline>
+    <source src="https://test-api.gaurav281833.workers.dev/proxy?url=https%3A%2F%2Fdm-d.terabox.app%2Ffile%2F60be2cc292f27a7eced676a946ff919f%3Ffid%3D4399148088253-250528-618315167560353%26dstime%3D1753270883%26rt%3Dsh%26sign%3DFDtAER-DCb740ccc5511e5e8fedcff06b081203-lKd32INYrwGm0jffzzHvqT05Uqw%253D%26expires%3D8h%26chkv%3D0%26chkbd%3D0%26chkpc%3D%26dp-logid%3D115484715976981179%26dp-callid%3D0%26r%3D742809636%26sh%3D1%26region%3Djp&file_name=Archita%20Part-3%20(3).mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
 
-    <script>
-        // Initialize Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.enableClosingConfirmation();
-        
-        // Get URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const videoUrl = urlParams.get('url');
-        const videoTitle = urlParams.get('title') || 'TeraBox Video';
-        const directUrl = urlParams.get('direct') || videoUrl;
-        
-        // Set the title
-        document.getElementById('video-title').textContent = videoTitle;
-        document.getElementById('download-btn').href = directUrl;
-        document.getElementById('download-btn').style.display = 'inline-block';
-        
-        // Initialize video player
-        const videoPlayer = document.getElementById('video-player');
-        const statusText = document.getElementById('status');
-        const errorText = document.getElementById('error');
-        const downloadBtn = document.getElementById('download-btn');
-        const formatOptions = document.getElementById('format-options');
-        
-        if (!videoUrl) {
-            showError("No video URL provided");
-            return;
-        }
-        
-        // Create a new video element with proper CORS attributes
-        function createVideoElement() {
-            const newVideo = document.createElement('video');
-            newVideo.controls = true;
-            newVideo.playsInline = true;
-            newVideo.crossOrigin = "anonymous";
-            newVideo.style.width = '100%';
-            newVideo.style.maxHeight = '80vh';
-            newVideo.style.backgroundColor = '#000';
-            return newVideo;
-        }
-        
-        // Replace the video element with a fresh one
-        function replaceVideoElement() {
-            const parent = videoPlayer.parentNode;
-            const newVideo = createVideoElement();
-            parent.replaceChild(newVideo, videoPlayer);
-            return newVideo;
-        }
-        
-        // Try playing with different approaches
-        function tryDifferentApproaches() {
-            // Attempt 1: Direct video source with CORS
-            videoPlayer.crossOrigin = "anonymous";
-            videoPlayer.src = videoUrl;
-            videoPlayer.load();
-            
-            // If first attempt fails, try with a fresh video element
-            const timeout = setTimeout(() => {
-                if (videoPlayer.readyState < 1) { // 0=HAVE_NOTHING
-                    const newVideo = replaceVideoElement();
-                    newVideo.addEventListener('error', handleVideoError);
-                    
-                    // Attempt 2: Using MediaSource API
-                    tryMediaSource(newVideo);
-                }
-            }, 3000);
-            
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                clearTimeout(timeout);
-                videoReady();
-            });
-        }
-        
-        // Try using MediaSource API as fallback
-        function tryMediaSource(videoElement) {
-            if (window.MediaSource) {
-                statusText.textContent = "Trying advanced streaming...";
-                
-                const mediaSource = new MediaSource();
-                videoElement.src = URL.createObjectURL(mediaSource);
-                
-                mediaSource.addEventListener('sourceopen', () => {
-                    // Here you would normally fetch and append video segments
-                    // For simplicity, we'll fall back to direct URL if MediaSource fails
-                    setTimeout(() => {
-                        if (videoElement.readyState < 1) {
-                            videoElement.src = videoUrl;
-                            videoElement.load();
-                        }
-                    }, 2000);
-                });
-            } else {
-                // Final fallback to direct URL
-                videoElement.src = videoUrl;
-                videoElement.load();
-            }
-        }
-        
-        // Handle successful video load
-        function videoReady() {
-            statusText.style.display = 'none';
-            videoPlayer.style.display = 'block';
-            
-            // Try autoplay with catch
-            videoPlayer.play().catch(e => {
-                showError("Autoplay blocked. Please tap the play button.");
-                console.log("Autoplay blocked:", e);
-            });
-        }
-        
-        // Handle video errors
-        function handleVideoError(e) {
-            console.error("Video error:", e, videoPlayer.error);
-            
-            if (videoPlayer.error && videoPlayer.error.code === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
-                showError("Video format not supported. Please download the video instead.");
-            } else {
-                let errorMsg = "Failed to load video. ";
-                switch(videoPlayer.error?.code) {
-                    case 1: // MEDIA_ERR_ABORTED
-                        errorMsg += "Playback was aborted.";
-                        break;
-                    case 2: // MEDIA_ERR_NETWORK
-                        errorMsg += "Network error occurred.";
-                        break;
-                    case 3: // MEDIA_ERR_DECODE
-                        errorMsg += "Error in video decoding.";
-                        break;
-                    default:
-                        errorMsg += "Unknown error occurred.";
-                }
-                
-                showError(errorMsg);
-            }
-        }
-        
-        // Show error message
-        function showError(message) {
-            statusText.style.display = 'none';
-            videoPlayer.style.display = 'none';
-            errorText.style.display = 'block';
-            errorText.textContent = message;
-            downloadBtn.style.display = 'inline-block';
-        }
-        
-        // Set up event listeners
-        videoPlayer.addEventListener('error', handleVideoError);
-        videoPlayer.addEventListener('loadedmetadata', videoReady);
-        
-        // Start playback attempt
-        tryDifferentApproaches();
-    </script>
+  <script>
+    const video = document.getElementById('video');
+    video.onerror = () => {
+      console.error("Video load error:", video.error);
+      alert("Failed to load video.");
+    };
+  </script>
 </body>
 </html>
