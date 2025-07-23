@@ -1,7 +1,103 @@
-<video controls autoplay id="player"></video>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeraBox Video Player</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        video {
+            width: 100%;
+            max-height: 80vh;
+            background-color: #000;
+        }
+        .title {
+            color: #fff;
+            padding: 10px;
+            margin: 0;
+            font-size: 18px;
+        }
+        .loading {
+            color: #fff;
+            font-size: 18px;
+        }
+        .error {
+            color: #ff4444;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title" id="video-title">Loading video...</h1>
+        <video id="video-player" controls playsinline></video>
+        <p class="loading" id="status">Connecting to video source...</p>
+        <p class="error" id="error" style="display: none;"></p>
+    </div>
 
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const videoUrl = params.get('url');
-  document.getElementById("player").src = decodeURIComponent(videoUrl);
-</script>
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+        
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoUrl = urlParams.get('url');
+        const videoTitle = urlParams.get('title') || 'TeraBox Video';
+        
+        // Set the title
+        document.getElementById('video-title').textContent = videoTitle;
+        
+        // Initialize video player
+        const videoPlayer = document.getElementById('video-player');
+        const statusText = document.getElementById('status');
+        const errorText = document.getElementById('error');
+        
+        if (!videoUrl) {
+            showError("No video URL provided");
+            return;
+        }
+        
+        // Configure video player
+        videoPlayer.src = videoUrl;
+        videoPlayer.load();
+        
+        videoPlayer.addEventListener('error', (e) => {
+            showError("Failed to load video. Please try downloading instead.");
+            console.error("Video error:", e);
+        });
+        
+        videoPlayer.addEventListener('canplay', () => {
+            statusText.style.display = 'none';
+            videoPlayer.style.display = 'block';
+            videoPlayer.play().catch(e => {
+                showError("Autoplay blocked. Please tap the play button.");
+                console.log("Autoplay blocked:", e);
+            });
+        });
+        
+        function showError(message) {
+            statusText.style.display = 'none';
+            videoPlayer.style.display = 'none';
+            errorText.style.display = 'block';
+            errorText.textContent = message;
+        }
+    </script>
+</body>
+</html>
